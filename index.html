@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whey Maze Neon</title>
+<style>
+body{
+    margin:0;
+    background:#050510;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+h1{
+    color:#00f7ff;
+    text-shadow:0 0 15px #00f7ff;
+}
+canvas{
+    background:#0a0a1a;
+    box-shadow:0 0 30px #00f7ff;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<h1>🏋🏻‍♂️ WHEY MAZE NEON</h1>
+<p>Fase: <span id="fase">1</span> | Pontos: <span id="score">0</span></p>
+
+<canvas id="game" width="760" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const tileSize = 40;
+let fase = 1;
+let score = 0;
+let creatinaAtiva = false;
+let creatinaTimer = 0;
+
+const mapa = [
+"1111111111111111111",
+"1000000010000000001",
+"1011111010111111101",
+"1010000010000010001",
+"1010111111111010111",
+"1010100000001010001",
+"1010101111101011101",
+"1000101000001000101",
+"1110101011111010101",
+"1000101010000010101",
+"1011101010111110101",
+"1000000010000000101",
+"1111111111111111111"
+];
+
+let player = { x:1, y:1 };
+
+let enemies = [
+    { x:17, y:1, color:"#00f7ff", name:"GRIPE" },
+    { x:17, y:11, color:"yellow", name:"CATABOLISMO" },
+    { x:1, y:11, color:"#00ff00", name:"TREINO DE PERNAS" }
+];
+
+let creatina = { x:9, y:6 };
+
+function drawMap(){
+    for(let y=0;y<mapa.length;y++){
+        for(let x=0;x<mapa[y].length;x++){
+            if(mapa[y][x]=="1"){
+                ctx.fillStyle="#111";
+                ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize);
+            }
+        }
+    }
+}
+
+function drawPlayer(){
+    ctx.font="28px Arial";
+    ctx.fillText("🏋🏻‍♂️", player.x*tileSize+5, player.y*tileSize+30);
+}
+
+function drawEnemies(){
+    enemies.forEach(e=>{
+        ctx.fillStyle=e.color;
+        ctx.font="12px Arial";
+        ctx.fillText(e.name, e.x*tileSize+2, e.y*tileSize+25);
+    });
+}
+
+function drawCreatina(){
+    ctx.font="20px Arial";
+    ctx.fillText("💊", creatina.x*tileSize+10, creatina.y*tileSize+25);
+}
+
+function movePlayer(dx,dy){
+    let nx = player.x+dx;
+    let ny = player.y+dy;
+    if(mapa[ny][nx]=="0"){
+        player.x=nx;
+        player.y=ny;
+    }
+}
+
+document.addEventListener("keydown",e=>{
+    if(e.key=="ArrowUp") movePlayer(0,-1);
+    if(e.key=="ArrowDown") movePlayer(0,1);
+    if(e.key=="ArrowLeft") movePlayer(-1,0);
+    if(e.key=="ArrowRight") movePlayer(1,0);
+});
+
+function moveEnemies(){
+    enemies.forEach(e=>{
+        let dx = player.x - e.x;
+        let dy = player.y - e.y;
+
+        let moveX = dx!==0 ? dx/Math.abs(dx) : 0;
+        let moveY = dy!==0 ? dy/Math.abs(dy) : 0;
+
+        if(Math.random()<0.5){
+            if(mapa[e.y][e.x+moveX]=="0") e.x+=moveX;
+        }else{
+            if(mapa[e.y+moveY][e.x]=="0") e.y+=moveY;
+        }
+    });
+}
+
+function checkCollision(){
+    enemies.forEach(e=>{
+        if(e.x==player.x && e.y==player.y){
+            if(!creatinaAtiva){
+                alert("💀 Você foi atingido por "+e.name);
+                location.reload();
+            }
+        }
+    });
+
+    if(player.x==creatina.x && player.y==creatina.y){
+        creatinaAtiva=true;
+        creatinaTimer=300;
+        creatina.x=1+Math.floor(Math.random()*15);
+        creatina.y=1+Math.floor(Math.random()*10);
+    }
+
+    if(player.x==9 && player.y==6){
+        fase++;
+        score+=100;
+        document.getElementById("fase").innerText=fase;
+        document.getElementById("score").innerText=score;
+        enemies.push({
+            x:1,
+            y:1,
+            color:"red",
+            name:"GRIPE++"
+        });
+        player.x=1;
+        player.y=1;
+    }
+}
+
+function update(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawMap();
+    drawCreatina();
+    drawPlayer();
+    drawEnemies();
+    moveEnemies();
+    checkCollision();
+
+    if(creatinaAtiva){
+        creatinaTimer--;
+        if(creatinaTimer<=0){
+            creatinaAtiva=false;
+        }
+    }
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
