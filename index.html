@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galinha Cross PRO</title>
+
+<style>
+body{
+    margin:0;
+    background:#1a1a1a;
+    font-family:Arial;
+    text-align:center;
+    color:white;
+}
+
+canvas{
+    background:#2f2f2f;
+    display:block;
+    margin:10px auto;
+    border-radius:10px;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-around;
+    font-size:18px;
+    margin-top:10px;
+}
+
+button{
+    padding:10px 15px;
+    margin:5px;
+    font-size:16px;
+    border:none;
+    border-radius:8px;
+    background:#ffcc00;
+    cursor:pointer;
+}
+
+#shop{
+    display:none;
+    background:#111;
+    padding:20px;
+    border-radius:10px;
+    margin:10px auto;
+    width:80%;
+}
+
+#ranking{
+    font-size:14px;
+    margin-top:5px;
+}
+
+#gameOver{
+    position:absolute;
+    top:40%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:black;
+    padding:30px;
+    border-radius:15px;
+    display:none;
+}
+</style>
+</head>
+<body>
+
+<h2>🐔 Galinha Cross PRO</h2>
+
+<div class="topbar">
+<div>🏆 Pontos: <span id="score">0</span></div>
+<div>💰 Moedas: <span id="coins">0</span></div>
+</div>
+
+<div id="ranking"></div>
+
+<canvas id="game" width="400" height="500"></canvas>
+
+<div>
+<button onclick="move('left')">⬅</button>
+<button onclick="move('up')">⬆</button>
+<button onclick="move('right')">➡</button>
+<button onclick="move('down')">⬇</button>
+</div>
+
+<div id="shop">
+<h3>🎨 Loja de Skins</h3>
+<button onclick="changeSkin('🐔')">🐔 (Grátis)</button>
+<button onclick="buySkin('🐸',50)">🐸 50 moedas</button>
+<button onclick="buySkin('🐷',100)">🐷 100 moedas</button>
+<button onclick="buySkin('🐱',150)">🐱 150 moedas</button>
+</div>
+
+<div id="gameOver">
+<h2>💥 Atropelado!</h2>
+<p>Pontuação: <span id="finalScore"></span></p>
+<button onclick="restart()">Jogar Novamente</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let chicken, cars, score, coins, speedMultiplier, gameRunning;
+let currentSkin = localStorage.getItem("skin") || "🐔";
+let ownedSkins = JSON.parse(localStorage.getItem("owned")) || ["🐔"];
+let highScore = localStorage.getItem("highScore") || 0;
+
+function init(){
+    chicken = {x:200, y:460};
+    cars = [];
+    score = 0;
+    speedMultiplier = 1;
+    gameRunning = true;
+    coins = parseInt(localStorage.getItem("coins")) || 0;
+    updateUI();
+    document.getElementById("gameOver").style.display="none";
+}
+
+function updateUI(){
+    document.getElementById("score").innerText = score;
+    document.getElementById("coins").innerText = coins;
+    document.getElementById("ranking").innerText = "🏆 Recorde: " + highScore;
+}
+
+function spawnCar(){
+    if(!gameRunning) return;
+    let lane = Math.floor(Math.random()*5);
+    let direction = Math.random()>0.5 ? 1 : -1;
+    cars.push({
+        x: direction===1 ? -80 : 480,
+        y: 80 + lane*70,
+        width:70,
+        height:35,
+        speed: (2 + Math.random()*2) * speedMultiplier,
+        direction
+    });
+}
+
+function drawRoad(){
+    ctx.fillStyle="#444";
+    for(let i=0;i<5;i++){
+        ctx.fillRect(0,80+i*70,400,50);
+        ctx.strokeStyle="white";
+        ctx.setLineDash([20,15]);
+        ctx.beginPath();
+        ctx.moveTo(0,105+i*70);
+        ctx.lineTo(400,105+i*70);
+        ctx.stroke();
+    }
+    ctx.setLineDash([]);
+}
+
+function drawChicken(){
+    ctx.font="35px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(currentSkin,chicken.x,chicken.y);
+}
+
+function update(){
+    if(!gameRunning) return;
+
+    ctx.clearRect(0,0,400,500);
+    drawRoad();
+    drawChicken();
+
+    ctx.fillStyle="red";
+    cars.forEach((car,i)=>{
+        car.x += car.speed * car.direction;
+        ctx.fillRect(car.x,car.y,car.width,car.height);
+
+        if(chicken.x > car.x &&
+           chicken.x < car.x+car.width &&
+           chicken.y > car.y &&
+           chicken.y < car.y+car.height){
+            gameOver();
+        }
+
+        if(car.x>500 || car.x<-100){
+            cars.splice(i,1);
+        }
+    });
+
+    if(chicken.y < 60){
+        score++;
+        coins += 10;
+        speedMultiplier += 0.1;
+        localStorage.setItem("coins",coins);
+        updateUI();
+        chicken.y = 460;
+
+        if(coins >= 50){
+            document.getElementById("shop").style.display="block";
+        }
+    }
+
+    requestAnimationFrame(update);
+}
+
+function move(dir){
+    if(!gameRunning) return;
+    if(dir==="left" && chicken.x>20) chicken.x-=25;
+    if(dir==="right" && chicken.x<380) chicken.x+=25;
+    if(dir==="up" && chicken.y>20) chicken.y-=25;
+    if(dir==="down" && chicken.y<480) chicken.y+=25;
+}
+
+document.addEventListener("keydown",(e)=>{
+    if(e.key==="ArrowLeft") move("left");
+    if(e.key==="ArrowRight") move("right");
+    if(e.key==="ArrowUp") move("up");
+    if(e.key==="ArrowDown") move("down");
+});
+
+function gameOver(){
+    gameRunning=false;
+    document.getElementById("finalScore").innerText=score;
+    document.getElementById("gameOver").style.display="block";
+
+    if(score > highScore){
+        highScore = score;
+        localStorage.setItem("highScore",highScore);
+    }
+    updateUI();
+}
+
+function restart(){
+    init();
+}
+
+function changeSkin(skin){
+    currentSkin = skin;
+    localStorage.setItem("skin",skin);
+}
+
+function buySkin(skin,price){
+    if(coins >= price && !ownedSkins.includes(skin)){
+        coins -= price;
+        ownedSkins.push(skin);
+        localStorage.setItem("owned",JSON.stringify(ownedSkins));
+        localStorage.setItem("coins",coins);
+        changeSkin(skin);
+        updateUI();
+        alert("Skin desbloqueada!");
+    } else if(ownedSkins.includes(skin)){
+        changeSkin(skin);
+    } else {
+        alert("Moedas insuficientes!");
+    }
+}
+
+setInterval(spawnCar,1200);
+init();
+update();
+</script>
+
+</body>
+</html>
